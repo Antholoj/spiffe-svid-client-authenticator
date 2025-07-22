@@ -5,7 +5,6 @@ This is a custom Keycloak Client Authenticator that validates SPIFFE SVID JWTs f
 ## Features
 
 - Validates SPIFFE SVID JWTs for client authentication
-- Supports private_key_jwt authentication method
 - Follows the same validation patterns as the standard JWT client authenticator
 - Provider ID: `client-spiffe-jwt`
 

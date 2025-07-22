@@ -74,18 +74,6 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
     
     private static final List<ProviderConfigProperty> CONFIG_PROPERTIES = new ArrayList<>();
     
-    static {
-        // SPIFFE Issuer configuration
-        ProviderConfigProperty spiffeIssuerProperty = new ProviderConfigProperty();
-        spiffeIssuerProperty.setName(CONFIG_PROPERTY_SPIFFE_ISSUER);
-        spiffeIssuerProperty.setLabel("SPIFFE Issuer");
-        spiffeIssuerProperty.setType(ProviderConfigProperty.STRING_TYPE);
-        spiffeIssuerProperty.setHelpText("The SPIFFE issuer (spiffe://trust-domain/workload-identifier) that this client should have");
-        spiffeIssuerProperty.setDefaultValue("http://spire-server:8443");
-        CONFIG_PROPERTIES.add(spiffeIssuerProperty);
-    }
-
-
 
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {
@@ -93,6 +81,7 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
             context.getClient().getClientId());
 
         SpiffeSvidClientValidator validator = new SpiffeSvidClientValidator(context, getId());
+
         if (!validator.clientAssertionParametersValidation()) return;
 
         try {
@@ -201,7 +190,7 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
 
     @Override
     public int order() {
-        return 1;
+        return 10;
     }
 
     @Override
@@ -225,7 +214,7 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
         String spiffeIssuer = client.getAttribute(CONFIG_PROPERTY_SPIFFE_ISSUER);
 
         // Set default values if not configured
-        if (spiffeIssuer == null) spiffeIssuer = "spiffe://example.org/my-client";
+        if (spiffeIssuer == null) spiffeIssuer = "http://spire-server:8443";
 
         props.put("issuer", spiffeIssuer);
 
@@ -237,7 +226,7 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
         props.put("client-key-alias", client.getClientId());
 
         Map<String, Object> config = new HashMap<>();
-        config.put("spiffe-svid-jwt", props);
+        config.put("spiffe-jwt", props);
         return config;
     }
 
@@ -252,8 +241,7 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
         
         if (loginProtocol.equals(OIDCLoginProtocol.LOGIN_PROTOCOL)) {
             Set<String> results = new HashSet<>();
-            // results.add("spiffe_svid_jwt");
-            results.add("private_key_jwt");
+            results.add("spiffe_svid_jwt");
             
             ServicesLogger.LOGGER.infof("Returning protocol methods: %s", results);
             return results;

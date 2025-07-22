@@ -86,8 +86,9 @@ public class SpiffeSvidClientValidator {
         }
 
         // Accept both standard JWT bearer and custom SPIFFE SVID JWT assertion types
-        if (!clientAssertionType.equals(OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT) && 
+        if (!clientAssertionType.equals(OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT) || 
             !clientAssertionType.equals("urn:ietf:params:oauth:client-assertion-type:spiffe-svid-jwt")) {
+
             Response challengeResponse = SpiffeSvidClientAuthUtil.errorResponse(Response.Status.BAD_REQUEST.getStatusCode(), "invalid_client", "Parameter client_assertion_type has value '"
                     + clientAssertionType + "' but expected is '" + OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT + 
                     "' or 'urn:ietf:params:oauth:client-assertion-type:spiffe_svid_jwt'");
@@ -112,9 +113,12 @@ public class SpiffeSvidClientValidator {
     }
 
     public boolean validateClient() {
+        logger.debugf("validateClient() called - starting client validation");
+        
         if (token == null) throw new IllegalStateException("Incorrect usage. Variable 'token' is null. Need to read JWS first before validateClient");
 
         String clientId = token.getSubject();
+        logger.debugf("Extracted client ID from token subject: %s", clientId);
         if (clientId == null) {
             throw new RuntimeException("Can't identify client. Subject missing on SPIFFE SVID JWT token");
         }
@@ -127,9 +131,11 @@ public class SpiffeSvidClientValidator {
         context.getEvent().client(clientId);
         client = realm.getClientByClientId(clientId);
         if (client == null) {
+            logger.warnf("Client not found for clientId: %s", clientId);
             context.failure(AuthenticationFlowError.CLIENT_NOT_FOUND, null);
             return false;
         } else {
+            logger.debugf("Client found: %s, enabled: %s", client.getClientId(), client.isEnabled());
             context.setClient(client);
         }
 
@@ -153,10 +159,13 @@ public class SpiffeSvidClientValidator {
         }
 
         if (!clientAuthenticatorProviderId.equals(client.getClientAuthenticatorType())) {
+            logger.warnf("Client authenticator type mismatch for client %s. Expected: %s, Got: %s", 
+                    clientId, clientAuthenticatorProviderId, client.getClientAuthenticatorType());
             context.failure(AuthenticationFlowError.INVALID_CLIENT_CREDENTIALS, null);
             return false;
         }
 
+        logger.debugf("validateClient() completed successfully for client: %s", clientId);
         return true;
     }
 
