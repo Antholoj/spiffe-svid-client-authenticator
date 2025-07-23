@@ -88,8 +88,8 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
 
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {
-        ServicesLogger.LOGGER.infof("SpiffeSvidClientAuthenticator.authenticateClient() called for client: %s", 
-            context.getClient().getClientId());
+        String clientId = context.getClient() != null ? context.getClient().getClientId() : "unknown";
+        ServicesLogger.LOGGER.infof("SpiffeSvidClientAuthenticator.authenticateClient() called for client: %s", clientId);
 
         SpiffeSvidClientValidator validator = new SpiffeSvidClientValidator(context, getId());
 
