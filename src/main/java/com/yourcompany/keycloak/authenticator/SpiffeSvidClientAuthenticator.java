@@ -73,6 +73,17 @@ public class SpiffeSvidClientAuthenticator extends AbstractClientAuthenticator {
     public static final String CONFIG_PROPERTY_SPIFFE_ISSUER = "issuer";
     
     private static final List<ProviderConfigProperty> CONFIG_PROPERTIES = new ArrayList<>();
+
+    static {
+        // SPIFFE Issuer configuration
+        ProviderConfigProperty spiffeIssuerProperty = new ProviderConfigProperty();
+        spiffeIssuerProperty.setName(CONFIG_PROPERTY_SPIFFE_ISSUER);
+        spiffeIssuerProperty.setLabel("SPIFFE Issuer");
+        spiffeIssuerProperty.setType(ProviderConfigProperty.STRING_TYPE);
+        spiffeIssuerProperty.setHelpText("The SPIFFE issuer (spiffe://trust-domain/workload-identifier) that this client should have");
+        spiffeIssuerProperty.setDefaultValue("http://spire-server:8443");
+        CONFIG_PROPERTIES.add(spiffeIssuerProperty);
+    }
     
 
     @Override

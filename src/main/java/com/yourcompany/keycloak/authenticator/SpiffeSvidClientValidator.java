@@ -86,7 +86,7 @@ public class SpiffeSvidClientValidator {
         }
 
         // Accept both standard JWT bearer and custom SPIFFE SVID JWT assertion types
-        if (!clientAssertionType.equals(OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT) || 
+        if (!clientAssertionType.equals(OAuth2Constants.CLIENT_ASSERTION_TYPE_JWT) && 
             !clientAssertionType.equals("urn:ietf:params:oauth:client-assertion-type:spiffe-svid-jwt")) {
 
             Response challengeResponse = SpiffeSvidClientAuthUtil.errorResponse(Response.Status.BAD_REQUEST.getStatusCode(), "invalid_client", "Parameter client_assertion_type has value '"
@@ -142,6 +142,7 @@ public class SpiffeSvidClientValidator {
         // For SPIFFE SVID JWT, the issuer should match the configured SPIFFE Issuer, not the client ID
         // The client ID is the subject, and the issuer is the SPIFFE identity
         String configuredSpiffeIssuer = client.getAttribute(SpiffeSvidClientAuthenticator.CONFIG_PROPERTY_SPIFFE_ISSUER);
+        logger.infof("Configured SPIFFE issuer for client %s: %s", clientId, configuredSpiffeIssuer);
         if (configuredSpiffeIssuer != null && !configuredSpiffeIssuer.trim().isEmpty()) {
             if (!configuredSpiffeIssuer.equals(token.getIssuer())) {
                 throw new RuntimeException("Issuer mismatch. The issuer should match the configured SPIFFE Issuer. Expected: " + configuredSpiffeIssuer + ", Got: " + token.getIssuer());
@@ -213,14 +214,24 @@ public class SpiffeSvidClientValidator {
     public void validateTokenReuse() {
         if (token == null) throw new IllegalStateException("Incorrect usage. Variable 'token' is null. Need to read token first before validateToken reuse");
         if (client == null) throw new IllegalStateException("Incorrect usage. Variable 'client' is null. Need to validate client first before validateToken reuse");
-
+    
         SingleUseObjectProvider singleUseCache = context.getSession().singleUseObjects();
         long lifespanInSecs = Math.max(Optional.ofNullable(token.getExp()).orElse(0L) - currentTime, 10);
-        if (singleUseCache.putIfAbsent(token.getId(), lifespanInSecs)) {
-            logger.tracef("Added SPIFFE SVID JWT token '%s' to single-use cache. Lifespan: %d seconds, client: %s", token.getId(), lifespanInSecs, client.getClientId());
-
+        
+        // Handle missing JWT ID by generating a fallback key
+        String tokenKey = token.getId();
+        if (tokenKey == null || tokenKey.trim().isEmpty()) {
+            // Generate unique key from other claims
+            tokenKey = String.format("spiffe:%s:%s:%s", 
+                token.getIssuer() != null ? token.getIssuer() : "unknown",
+                token.getSubject() != null ? token.getSubject() : "unknown", 
+                token.getIat() != null ? token.getIat().toString() : String.valueOf(currentTime));
+        }
+        
+        if (singleUseCache.putIfAbsent(tokenKey, lifespanInSecs)) {
+            logger.tracef("Added SPIFFE SVID JWT token '%s' to single-use cache. Lifespan: %d seconds, client: %s", tokenKey, lifespanInSecs, client.getClientId());
         } else {
-            logger.warnf("SPIFFE SVID JWT token '%s' already used when authenticating client '%s'.", token.getId(), client.getClientId());
+            logger.warnf("SPIFFE SVID JWT token '%s' already used when authenticating client '%s'.", tokenKey, client.getClientId());
             throw new RuntimeException("SPIFFE SVID JWT token reuse detected");
         }
     }
